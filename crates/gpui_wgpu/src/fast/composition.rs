@@ -50,6 +50,14 @@ impl WgpuRenderer {
     /// Moves this renderer onto another surface of the same GPU context,
     /// keeping its pipelines and sprite atlas, which are much slower to create
     /// than a surface.
+    ///
+    /// The renderer keeps the present mode it chose for its first surface:
+    /// `replace_surface` sets a preferred mode without checking that the new
+    /// surface supports it, and configuring an unsupported mode (`Mailbox`
+    /// where only `Fifo` is available, as on llvmpipe) leaves the surface
+    /// unconfigured, so the next frame panics. A reused renderer only moves
+    /// to surfaces of the same kind as its first one, which support the same
+    /// modes.
     pub fn replace_surface_sharing_context<W>(
         &mut self,
         window: &W,
@@ -58,6 +66,10 @@ impl WgpuRenderer {
     where
         W: HasWindowHandle,
     {
+        let config = WgpuSurfaceConfig {
+            preferred_present_mode: None,
+            ..config
+        };
         let gpu_context = Rc::clone(
             self.context
                 .as_ref()
